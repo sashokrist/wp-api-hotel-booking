@@ -1,0 +1,79 @@
+/*
+Theme Name: HotelBookings
+Theme URI: https://example.com/hotelbookings-theme
+Author: Aleksander
+Author URI: https://example.com
+Description: Minimal custom theme tailored for Laravel Bookings Integration plugin.
+Version: 1.0.0
+Requires at least: 6.0
+Tested up to: 6.6
+License: GPLv2 or later
+Text Domain: hotelbookings
+*/
+
+:root{
+    --hb-bg:#0b1320;
+    --hb-card:#111a2b;
+    --hb-muted:#99a4b6;
+    --hb-accent:#4cc9f0;
+    --hb-text:#f5f7fb;
+    --hb-border:#1f2a40;
+}
+
+* { box-sizing: border-box; }
+
+body{
+    margin:0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
+    background: var(--hb-bg);
+    color: var(--hb-text);
+    line-height:1.55;
+}
+
+a{ color: var(--hb-accent); text-decoration:none; }
+a:hover{ text-decoration:underline; }
+
+.hb-container{
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.hb-header{
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid var(--hb-border);
+}
+
+.hb-brand{
+    display:flex; align-items:center; gap:12px;
+    font-weight:700; letter-spacing:.3px; font-size:20px;
+}
+
+.hb-nav{
+    display:flex; gap:16px; flex-wrap:wrap; margin-top:12px;
+}
+
+.hb-card{
+    background: var(--hb-card);
+    border: 1px solid var(--hb-border);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.25);
+}
+
+main{ padding: 28px 0 40px; }
+
+footer{
+    border-top:1px solid var(--hb-border);
+    color: var(--hb-muted);
+    font-size: 14px;
+    padding: 24px 0 40px;
+}
+
+.hb-table{
+    width:100%; border-collapse: collapse;
+}
+.hb-table th, .hb-table td{
+    padding:10px 12px; border-bottom:1px solid var(--hb-border);
+}
+.hb-table th{ color: var(--hb-muted); font-weight:600; text-transform: uppercase; font-size:12px; letter-spacing: .5px; }
