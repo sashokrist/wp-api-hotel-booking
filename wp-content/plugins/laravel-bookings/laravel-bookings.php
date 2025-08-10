@@ -86,48 +86,88 @@ class Laravel_Bookings_Integration {
 	/**
 	 * Public Bookings List (relies on your Laravel GET /bookings being public).
 	 */
-	public function show_bookings() {
-		$response = wp_remote_get("{$this->api_url}/bookings", ['timeout' => 12]);
+    public function show_bookings() {
+        // 1) Fetch bookings
+        $resp = wp_remote_get("{$this->api_url}/bookings", ['timeout' => 12]);
+        if (is_wp_error($resp)) {
+            return '<p style="color:#b00">Error fetching bookings: '
+                   . esc_html($resp->get_error_message()) . '</p>';
+        }
+        $bookings = json_decode(wp_remote_retrieve_body($resp), true);
+        if (!is_array($bookings) || empty($bookings)) {
+            return '<p>No bookings found.</p>';
+        }
 
-		if (is_wp_error($response)) {
-			return '<p style="color:#b00">Error fetching bookings: '
-			       . esc_html($response->get_error_message()) . '</p>';
-		}
+        // 2) Build Customer ID -> Name map
+        $customers   = $this->fetch_dropdown_data('customers'); // expects [{id,name}, ...]
+        $customerMap = [];
+        foreach ((array)$customers as $c) {
+            $id   = is_array($c) ? ($c['id'] ?? null) : (is_object($c) ? ($c->id ?? null) : null);
+            $name = is_array($c) ? ($c['name'] ?? null) : (is_object($c) ? ($c->name ?? null) : null);
+            if ($id !== null) {
+                $customerMap[$id] = $name ?: ("Customer #{$id}");
+            }
+        }
 
-		$bookings = json_decode(wp_remote_retrieve_body($response), true);
-		if (!is_array($bookings) || empty($bookings)) {
-			return '<p>No bookings found.</p>';
-		}
+        // 3) Build Room ID -> Label map (prefer name, then type, then common nested keys)
+        $rooms   = $this->fetch_dropdown_data('rooms');
+        $roomMap = [];
+        foreach ((array)$rooms as $r) {
+            if (is_array($r)) {
+                $id    = $r['id'] ?? null;
+                $label = $r['name'] ?? $r['type'] ?? ($r['room_type']['name'] ?? $r['type_name'] ?? null);
+            } else {
+                $id    = isset($r->id) ? $r->id : null;
+                $label = $r->name ?? $r->type ?? ($r->room_type->name ?? $r->type_name ?? null);
+            }
+            if ($id !== null) {
+                $roomMap[$id] = $label ?: ("Room #{$id}");
+            }
+        }
 
-		ob_start();
-		echo '<h2>Bookings</h2>';
-		echo '<table class="hb-table"><thead><tr>';
-		echo '<th>ID</th><th>Customer</th><th>Total</th><th>Check-in</th><th>Check-out</th>';
-		echo '</tr></thead><tbody>';
-		foreach ($bookings as $b) {
-			$id   = is_array($b) ? ($b['id'] ?? '') : (is_object($b) ? ($b->id ?? '') : '');
-			$cid  = is_array($b) ? ($b['customer_id'] ?? '') : (is_object($b) ? ($b->customer_id ?? '') : '');
-			$tot  = is_array($b) ? ($b['total_price'] ?? '') : (is_object($b) ? ($b->total_price ?? '') : '');
-			$cinV = is_array($b) ? ($b['check_in_date'] ?? '') : (is_object($b) ? ($b->check_in_date ?? '') : '');
-			$coutV= is_array($b) ? ($b['check_out_date'] ?? ''): (is_object($b) ? ($b->check_out_date ?? ''): '');
+        // 4) Render table with Customer Name + Room Label
+        ob_start();
+        echo '<h2>Bookings</h2>';
+        echo '<table class="hb-table"><thead><tr>';
+        echo '<th>ID</th><th>Customer</th><th>Room</th><th>Total</th><th>Check-in</th><th>Check-out</th>';
+        echo '</tr></thead><tbody>';
 
-			// NEW: pretty format
-			$cin  = $this->hb_format_date($cinV);
-			$cout = $this->hb_format_date($coutV);
+        foreach ($bookings as $b) {
+            // Support array or object shapes
+            $id    = is_array($b) ? ($b['id'] ?? '')            : (is_object($b) ? ($b->id ?? '')            : '');
+            $cid   = is_array($b) ? ($b['customer_id'] ?? '')   : (is_object($b) ? ($b->customer_id ?? '')   : '');
+            $rid   = is_array($b) ? ($b['room_id'] ?? '')       : (is_object($b) ? ($b->room_id ?? '')       : '');
+            $tot   = is_array($b) ? ($b['total_price'] ?? '')   : (is_object($b) ? ($b->total_price ?? '')   : '');
+            $cinV  = is_array($b) ? ($b['check_in_date'] ?? '') : (is_object($b) ? ($b->check_in_date ?? '') : '');
+            $coutV = is_array($b) ? ($b['check_out_date'] ?? ''): (is_object($b) ? ($b->check_out_date ?? ''): '');
 
-			echo '<tr>';
-			echo '<td>'.esc_html($id).'</td>';
-			echo '<td>'.esc_html($cid).'</td>';
-			echo '<td>'.esc_html($tot).'</td>';
-			echo '<td>'.esc_html($cin).'</td>';
-			echo '<td>'.esc_html($cout).'</td>';
-			echo '</tr>';
-		}
-		echo '</tbody></table>';
-		return ob_get_clean();
-	}
+            // Pretty dates if you added hb_format_date(); otherwise fallback
+            if (method_exists($this, 'hb_format_date')) {
+                $cin  = $this->hb_format_date($cinV);
+                $cout = $this->hb_format_date($coutV);
+            } else {
+                $cin  = esc_html(is_string($cinV)  ? substr($cinV,  0, 10) : $cinV);
+                $cout = esc_html(is_string($coutV) ? substr($coutV, 0, 10) : $coutV);
+            }
 
-	/**
+            $cname = $customerMap[$cid] ?? ("Customer #".$cid);
+            $rname = $roomMap[$rid]     ?? ("Room #".$rid);
+
+            echo '<tr>';
+            echo '<td>'.esc_html($id).'</td>';
+            echo '<td>'.esc_html($cname).'</td>';   // Customer name
+            echo '<td>'.esc_html($rname).'</td>';   // Room type/name
+            echo '<td>'.esc_html($tot).'</td>';
+            echo '<td>'.esc_html($cin).'</td>';
+            echo '<td>'.esc_html($cout).'</td>';
+            echo '</tr>';
+        }
+
+        echo '</tbody></table>';
+        return ob_get_clean();
+    }
+
+    /**
 	 * Create Booking Form (POST -> Laravel, then PRG redirect back with success/error).
 	 * Expects Laravel columns: customer_id, room_id, check_in_date, check_out_date, total_price
 	 */
