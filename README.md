@@ -1,4 +1,4 @@
-# HotelBookings — WordPress + Laravel API
+# HotelBookings — WordPress + Laravel API (Repo: https://github.com/sashokrist/booking-hotel-system-api_chocolate-ice-cream)
 
 A minimal WordPress site (custom **theme** + **plugin**) that consumes your **Laravel Hotel Booking API** to:
 
